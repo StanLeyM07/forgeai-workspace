@@ -13,6 +13,7 @@ import { Route as ResearchAssistantRouteImport } from './routes/research-assista
 import { Route as EmailGeneratorRouteImport } from './routes/email-generator'
 import { Route as ChatbotRouteImport } from './routes/chatbot'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const ResearchAssistantRoute = ResearchAssistantRouteImport.update({
   id: '/research-assistant',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chatbot': typeof ChatbotRoute
   '/email-generator': typeof EmailGeneratorRoute
   '/research-assistant': typeof ResearchAssistantRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chatbot': typeof ChatbotRoute
   '/email-generator': typeof EmailGeneratorRoute
   '/research-assistant': typeof ResearchAssistantRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,30 @@ export interface FileRoutesById {
   '/chatbot': typeof ChatbotRoute
   '/email-generator': typeof EmailGeneratorRoute
   '/research-assistant': typeof ResearchAssistantRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chatbot' | '/email-generator' | '/research-assistant'
+  fullPaths:
+    | '/'
+    | '/chatbot'
+    | '/email-generator'
+    | '/research-assistant'
+    | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chatbot' | '/email-generator' | '/research-assistant'
-  id: '__root__' | '/' | '/chatbot' | '/email-generator' | '/research-assistant'
+  to:
+    | '/'
+    | '/chatbot'
+    | '/email-generator'
+    | '/research-assistant'
+    | '/api/chat'
+  id:
+    | '__root__'
+    | '/'
+    | '/chatbot'
+    | '/email-generator'
+    | '/research-assistant'
+    | '/api/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +92,7 @@ export interface RootRouteChildren {
   ChatbotRoute: typeof ChatbotRoute
   EmailGeneratorRoute: typeof EmailGeneratorRoute
   ResearchAssistantRoute: typeof ResearchAssistantRoute
+  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +125,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,7 +140,18 @@ const rootRouteChildren: RootRouteChildren = {
   ChatbotRoute: ChatbotRoute,
   EmailGeneratorRoute: EmailGeneratorRoute,
   ResearchAssistantRoute: ResearchAssistantRoute,
+  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
