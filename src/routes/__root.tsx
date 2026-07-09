@@ -78,25 +78,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ForgeAI — AI Workplace Productivity Assistant" },
+      { title: "ForgeAI — AI Productivity Suite for Modern Work" },
       {
         name: "description",
         content:
-          "ForgeAI is a premium AI-powered productivity suite for the modern workplace. Generate polished emails, research any topic, and chat with an AI assistant.",
+          "Welcome to ForgeAI. Generate emails, research any topic, and chat with an AI workplace assistant — all in one premium suite.",
       },
-      { property: "og:title", content: "ForgeAI — AI Workplace Productivity Assistant" },
+      { property: "og:title", content: "ForgeAI — AI Productivity Suite for Modern Work" },
       {
         property: "og:description",
-        content: "Craft emails, research topics, and get instant AI-powered workplace guidance.",
+        content: "Welcome to ForgeAI. Generate emails, research any topic, and chat with an AI workplace assistant — all in one premium suite.",
       },
       { property: "og:type", content: "website" },
       { property: "og:site_name", content: "ForgeAI" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "ForgeAI — AI Workplace Productivity Assistant" },
+      { name: "twitter:title", content: "ForgeAI — AI Productivity Suite for Modern Work" },
       {
         name: "twitter:description",
-        content: "Your AI-powered productivity suite for the modern workplace.",
+        content: "Welcome to ForgeAI. Generate emails, research any topic, and chat with an AI workplace assistant — all in one premium suite.",
       },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9cf8bfdc-7994-41db-bbfb-9e027bb050e9/id-preview-e332e0fa--8e3e83ab-35e7-4c70-a5d7-cb9bb372e2d5.lovable.app-1783598090032.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9cf8bfdc-7994-41db-bbfb-9e027bb050e9/id-preview-e332e0fa--8e3e83ab-35e7-4c70-a5d7-cb9bb372e2d5.lovable.app-1783598090032.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

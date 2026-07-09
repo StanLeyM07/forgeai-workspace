@@ -12,10 +12,10 @@ export const Route = createFileRoute("/")({
         content:
           "Welcome to ForgeAI. Generate emails, research any topic, and chat with an AI workplace assistant — all in one premium suite.",
       },
-      { property: "og:title", content: "ForgeAI — AI Productivity Suite" },
+      { property: "og:title", content: "ForgeAI — AI Productivity Suite for Modern Work" },
       {
         property: "og:description",
-        content: "Your AI-powered productivity suite for the modern workplace.",
+        content: "Welcome to ForgeAI. Generate emails, research any topic, and chat with an AI workplace assistant — all in one premium suite.",
       },
     ],
   }),
