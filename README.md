@@ -157,8 +157,8 @@ TanStack Start uses file-based routing under `src/routes/`. The root route (`__r
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
-cd forgeai
+git clone https://github.com/StanLeyM07/forgeai-workspace.git
+cd forgeai-workspace
 ```
 
 ### 2. Install Dependencies
