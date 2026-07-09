@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { StreamingText } from "@/components/StreamingText";
 import { Mail, Sparkles, Copy, RefreshCw, Trash2 } from "lucide-react";
 import { generateEmail, type Tone, type EmailInput } from "@/data/emailTemplates";
+import { useStreamingText } from "@/hooks/useStreamingText";
 import { cn } from "@/lib/utils";
 
 const PURPOSES = [
@@ -39,10 +39,10 @@ export function EmailGenerator() {
   const [points, setPoints] = useState("");
 
   const [output, setOutput] = useState<{ subject: string; body: string } | null>(null);
+  const [streamKey, setStreamKey] = useState(0);
   const [editedBody, setEditedBody] = useState("");
-  const [seed, setSeed] = useState(0);
 
-  const doGenerate = (fresh = true) => {
+  const doGenerate = () => {
     const input: EmailInput = {
       recipient,
       sender,
@@ -50,11 +50,10 @@ export function EmailGenerator() {
       tone,
       points,
     };
-    const s = fresh ? Math.random() : seed + 0.37;
-    setSeed(s);
-    const result = generateEmail(input, s);
+    const result = generateEmail(input);
     setOutput(result);
     setEditedBody(result.body);
+    setStreamKey((k) => k + 1);
   };
 
   const copy = async () => {
@@ -128,7 +127,10 @@ export function EmailGenerator() {
             />
           </Field>
 
-          <Button className="w-full gradient-hero text-[color:var(--primary-foreground)] hover:brightness-110" onClick={() => doGenerate(true)}>
+          <Button
+            className="w-full gradient-hero text-[color:var(--primary-foreground)] hover:brightness-110"
+            onClick={doGenerate}
+          >
             <Sparkles className="mr-2 h-4 w-4" />
             Generate Email
           </Button>
@@ -139,7 +141,7 @@ export function EmailGenerator() {
       <Card className="flex flex-col p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Generated Email</h2>
-          <Badge className="bg-[rgba(245,158,11,0.15)] text-[color:var(--primary)] hover:bg-[rgba(245,158,11,0.2)]">
+          <Badge className="border-transparent bg-[rgba(245,158,11,0.15)] text-[color:var(--primary)] hover:bg-[rgba(245,158,11,0.2)]">
             AI Generated
           </Badge>
         </div>
@@ -160,22 +162,18 @@ export function EmailGenerator() {
               <div className="mt-1 font-semibold">{output.subject}</div>
             </div>
 
-            <StreamingKey k={`${output.subject}-${seed}`}>
-              <div className="rounded-md border border-border bg-[color:var(--background)] px-4 py-3">
-                <StreamingBody
-                  text={output.body}
-                  onDone={(t) => setEditedBody(t)}
-                  edited={editedBody}
-                  setEdited={setEditedBody}
-                />
-              </div>
-            </StreamingKey>
+            <EmailBody
+              key={streamKey}
+              text={output.body}
+              value={editedBody}
+              onChange={setEditedBody}
+            />
 
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={copy}>
                 <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
               </Button>
-              <Button variant="outline" size="sm" onClick={() => doGenerate(true)}>
+              <Button variant="outline" size="sm" onClick={doGenerate}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
               </Button>
               <Button variant="outline" size="sm" onClick={clear}>
@@ -200,75 +198,36 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function StreamingKey({ k, children }: { k: string; children: React.ReactNode }) {
-  // Force re-mount to restart streaming when key changes
-  return <div key={k} className="flex-1">{children}</div>;
-}
-
-function StreamingBody({
+function EmailBody({
   text,
-  edited,
-  setEdited,
+  value,
+  onChange,
 }: {
   text: string;
-  edited: string;
-  setEdited: (v: string) => void;
-  onDone: (t: string) => void;
+  value: string;
+  onChange: (v: string) => void;
 }) {
+  const { displayed, isStreaming } = useStreamingText(text, 12);
   const [done, setDone] = useState(false);
-  // Reset when text changes
-  useResetOnChange(text, () => setDone(false));
+  useEffect(() => {
+    if (!isStreaming && displayed === text) setDone(true);
+  }, [isStreaming, displayed, text]);
 
   if (done) {
     return (
       <Textarea
-        value={edited}
-        onChange={(e) => setEdited(e.target.value)}
-        rows={Math.max(10, edited.split("\n").length + 1)}
-        className="min-h-[220px] resize-y border-0 bg-transparent p-0 leading-relaxed focus-visible:ring-0 shadow-none"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={Math.max(12, value.split("\n").length + 1)}
+        className="min-h-[240px] resize-y rounded-md border-border bg-[color:var(--background)] leading-relaxed"
       />
     );
   }
 
   return (
-    <StreamingWithDone text={text} onDone={() => setDone(true)} />
-  );
-}
-
-function StreamingWithDone({ text, onDone }: { text: string; onDone: () => void }) {
-  const { displayed, isStreaming } = useStreamingWithComplete(text, onDone);
-  return (
-    <div className="whitespace-pre-wrap leading-relaxed text-sm">
+    <div className="min-h-[240px] whitespace-pre-wrap rounded-md border border-border bg-[color:var(--background)] px-4 py-3 text-sm leading-relaxed">
       {displayed}
       {isStreaming && <span className="stream-cursor" aria-hidden />}
     </div>
   );
-}
-
-// small hook helpers inline to avoid extra files
-import { useEffect, useRef } from "react";
-import { useStreamingText } from "@/hooks/useStreamingText";
-
-function useResetOnChange(dep: string, fn: () => void) {
-  const first = useRef(true);
-  useEffect(() => {
-    if (first.current) { first.current = false; return; }
-    fn();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dep]);
-}
-
-function useStreamingWithComplete(text: string, onDone: () => void) {
-  const { displayed, isStreaming } = useStreamingText(text, 15);
-  const prev = useRef(true);
-  useEffect(() => {
-    if (prev.current && !isStreaming) {
-      prev.current = false;
-      onDone();
-    } else if (isStreaming) {
-      prev.current = true;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStreaming]);
-  return { displayed, isStreaming };
 }
