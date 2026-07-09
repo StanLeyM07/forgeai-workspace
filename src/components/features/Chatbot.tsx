@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { StreamingText } from "@/components/StreamingText";
 import { ArrowUp, Zap } from "lucide-react";
-import { chatReply, suggestionChips } from "@/data/chatResponses";
+import { suggestionChips } from "@/data/chatResponses";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
-  role: "user" | "ai";
-  text: string;
+  role: "user" | "assistant";
+  content: string;
   ts: number;
 }
 
@@ -24,26 +24,55 @@ const formatTs = (ts: number) => {
 export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [thinking, setThinking] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, thinking]);
+  }, [messages, streaming]);
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const t = text.trim();
-    if (!t || thinking) return;
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", text: t, ts: Date.now() };
-    setMessages((m) => [...m, userMsg]);
+    if (!t || streaming) return;
+    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: t, ts: Date.now() };
+    const assistantId = crypto.randomUUID();
+    const history = [...messages, userMsg];
+    setMessages([...history, { id: assistantId, role: "assistant", content: "", ts: Date.now() }]);
     setInput("");
-    setThinking(true);
-    const delay = 900 + Math.random() * 900;
-    window.setTimeout(() => {
-      const reply: Message = { id: crypto.randomUUID(), role: "ai", text: chatReply(t), ts: Date.now() };
-      setThinking(false);
-      setMessages((m) => [...m, reply]);
-    }, delay);
+    setStreaming(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: history.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        if (res.status === 429) toast.error("Rate limit reached. Please wait a moment.");
+        else if (res.status === 402) toast.error("AI credits exhausted. Please add credits.");
+        else toast.error("Something went wrong. Please try again.");
+        setMessages((m) => m.filter((x) => x.id !== assistantId));
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: acc } : x)));
+      }
+    } catch {
+      toast.error("Network error. Please try again.");
+      setMessages((m) => m.filter((x) => x.id !== assistantId));
+    } finally {
+      setStreaming(false);
+    }
   };
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -79,10 +108,14 @@ export function Chatbot() {
           </div>
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-5">
-            {messages.map((m) => (
-              <MessageBubble key={m.id} msg={m} />
+            {messages.map((m, i) => (
+              <MessageBubble
+                key={m.id}
+                msg={m}
+                isLast={i === messages.length - 1}
+                streaming={streaming}
+              />
             ))}
-            {thinking && <ThinkingBubble />}
           </div>
         )}
       </div>
@@ -99,7 +132,7 @@ export function Chatbot() {
           />
           <Button
             onClick={() => send(input)}
-            disabled={!input.trim() || thinking}
+            disabled={!input.trim() || streaming}
             className="h-11 w-11 shrink-0 rounded-full gradient-hero p-0 text-[color:var(--primary-foreground)] hover:brightness-110 disabled:opacity-50"
             aria-label="Send"
           >
@@ -107,15 +140,24 @@ export function Chatbot() {
           </Button>
         </div>
         <p className="mx-auto mt-2 max-w-3xl text-center text-[0.7rem] text-[color:var(--muted-foreground)]/70">
-          ForgeAI uses simulated AI responses for demonstration purposes.
+          ForgeAI is powered by real AI. Responses may vary.
         </p>
       </div>
     </div>
   );
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({
+  msg,
+  isLast,
+  streaming,
+}: {
+  msg: Message;
+  isLast: boolean;
+  streaming: boolean;
+}) {
   const isUser = msg.role === "user";
+  const isPending = !isUser && isLast && streaming && msg.content.length === 0;
   return (
     <div
       className={cn(
@@ -131,38 +173,27 @@ function MessageBubble({ msg }: { msg: Message }) {
         )}
         <div
           className={cn(
-            "max-w-[75%] px-4 py-3 text-sm leading-relaxed",
+            "max-w-[75%] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
             isUser
               ? "rounded-[16px_16px_4px_16px] bg-[color:var(--surface-3)] text-foreground"
               : "rounded-[16px_16px_16px_4px] bg-[color:var(--surface-2)] text-foreground",
           )}
         >
-          {isUser ? (
-            <span className="whitespace-pre-wrap">{msg.text}</span>
+          {isPending ? (
+            <span className="text-muted-foreground">
+              <span className="mr-2">ForgeAI is thinking</span>
+              <span className="thinking-dot" style={{ animationDelay: "0s" }}>•</span>
+              <span className="thinking-dot" style={{ animationDelay: "0.2s" }}>•</span>
+              <span className="thinking-dot" style={{ animationDelay: "0.4s" }}>•</span>
+            </span>
           ) : (
-            <StreamingText text={msg.text} speed={12} />
+            msg.content
           )}
         </div>
       </div>
       <span className={cn("text-[0.7rem] text-[color:var(--muted-foreground)]/70", isUser ? "mr-1" : "ml-9")}>
         {formatTs(msg.ts)}
       </span>
-    </div>
-  );
-}
-
-function ThinkingBubble() {
-  return (
-    <div className="flex items-end gap-2 animate-in fade-in duration-200">
-      <span className="mb-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[rgba(245,158,11,0.15)] text-[0.65rem] font-bold text-[color:var(--primary)]">
-        AI
-      </span>
-      <div className="rounded-[16px_16px_16px_4px] bg-[color:var(--surface-2)] px-4 py-3 text-sm text-muted-foreground">
-        <span className="mr-2">ForgeAI is thinking</span>
-        <span className="thinking-dot" style={{ animationDelay: "0s" }}>•</span>
-        <span className="thinking-dot" style={{ animationDelay: "0.2s" }}>•</span>
-        <span className="thinking-dot" style={{ animationDelay: "0.4s" }}>•</span>
-      </div>
     </div>
   );
 }
